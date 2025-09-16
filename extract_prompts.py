@@ -42,8 +42,9 @@ def extract_prompts_only(output_file="prompts_only.json"):
                - You do NOT need to compare every pair; you just need to do comparisons to make the order more reasonable
                - Keep reasons concise and focused on query relevance
 
+            3) Then, you need to do a final check, refine the final order as needed and make sure the end order contains all passages without duplication 
 
-            3) In the end , within <answer> tags, output ONLY the final ranking in descending order of relevance using the exact format:
+            4) In the end , within <answer> tags, output ONLY the final ranking in descending order of relevance using the exact format:
                [X] > [Y] > [Z] > ... (include ALL identifiers exactly once, no omissions, no duplicates)
                Do NOT include any extra text besides the chain inside <answer>.'''
         
