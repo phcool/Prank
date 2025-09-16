@@ -46,7 +46,9 @@ def extract_prompts_only(output_file="prompts_only.json"):
 
             4) In the end , within <answer> tags, output ONLY the final ranking in descending order of relevance using the exact format:
                [X] > [Y] > [Z] > ... (include ALL identifiers exactly once, no omissions, no duplicates)
-               Do NOT include any extra text besides the chain inside <answer>.'''
+               Do NOT include any extra text besides the chain inside <answer>.
+            IMPORTANT: You must strictly follow the <think> and <answer>format   
+               '''
         
         # Extract and modify prompts
         prompts_only = []
