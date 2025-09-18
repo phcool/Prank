@@ -31,14 +31,17 @@ def extract_prompts_only(output_file="prompts_only.json"):
         new_instruction = '''IMPORTANT：Please rank these passages according to their relevance to the search query:
             Follow these steps exactly:
 
-            1) Within <think> tags, you must think and do a raw rerank task based on you understanding of the passagses first. You need to analyze each passages to understand what they are talking about and analyze the query to learn what types of passage is more relevant. Then you need to output the reranked order based on your analyze. Your format should be:
+            1) Within <reason> tags, you must think and do a raw rerank task based on you understanding of the passagses first. You need to analyze each passages to understand what they are talking about and analyze the query to learn what types of passage is more relevant. Then you need to output the reranked order based on your analyze. Your format should be:
             - Query: <analyzing>
             - passgase[i] <analyzing>
             - raw anwser <your output order>
             2) After that, you must conduct multi-round pairwise comparisons BETWEEN passages as needed to derive a reliable order. In each round, you can do many comparisons as you need. After each round, you need to output the current order.:
+               - Round [I]:
                - Comparison line: "Compare [i] vs [j]: [i|j] is more relevant because <brief reason>"
-               - order line:"[i] > [j] > [k]> ...."(full order)
-               Guidance for <think>:
+               - Comparison line: ….
+               - …
+               - current order line:"[i] > [j] > [k]> ...."(full order)
+               Guidance for <reason>:
                - You do NOT need to compare every pair; you just need to do comparisons to make the order more reasonable
                - Keep reasons concise and focused on query relevance
 
@@ -47,7 +50,8 @@ def extract_prompts_only(output_file="prompts_only.json"):
             4) In the end , within <answer> tags, output ONLY the final ranking in descending order of relevance using the exact format:
                [X] > [Y] > [Z] > ... (include ALL identifiers exactly once, no omissions, no duplicates)
                Do NOT include any extra text besides the chain inside <answer>.
-            IMPORTANT: You must strictly follow the <think> and <answer>format   
+
+IMPORTANT: You must strictly follow the <reason> and <answer>format   
                '''
         
         # Extract and modify prompts
@@ -57,38 +61,52 @@ def extract_prompts_only(output_file="prompts_only.json"):
             example = train_data[i]
             original_prompt = example.get('prompt', [])
             
-            # Make a copy of the prompt to modify
-            modified_prompt = []
+            # Convert conversation to string format, excluding assistant messages
+            prompt_text = ""
             
             for message in original_prompt:
-                # Copy all messages as-is except for the last user message
-                modified_prompt.append(message.copy())
-            
-            # Find and modify the last user message
-            for j in range(len(modified_prompt) - 1, -1, -1):
-                if modified_prompt[j].get('role') == 'user':
-                    # Get the original content
-                    original_content = modified_prompt[j]['content']
-                    
-                    # Find the last instruction part and replace it
-                    # Look for the pattern that starts with "Please rank these passages"
-                    if 'Please rank these passages' in original_content:
+                role = message.get('role', '')
+                content = message.get('content', '')
+                
+                # Skip assistant messages completely
+                if role == 'assistant':
+                    continue
+                
+                # For system and user messages, only keep the content
+                if role == 'system':
+                    prompt_text += content + "\n\n"
+                elif role == 'user':
+                    # Check if this is the last user message that needs modification
+                    if 'Please rank these passages' in content:
                         # Split at "Please rank these passages" and keep everything before it
-                        parts = original_content.split('Please rank these passages', 1)
+                        parts = content.split('Please rank these passages', 1)
                         # Rebuild with new instruction
-                        modified_prompt[j]['content'] = parts[0] + new_instruction
-                    break
+                        prompt_text += parts[0] + new_instruction
+                    else:
+                        prompt_text += content + "\n\n"
             
-            prompts_only.append(modified_prompt)
+            # Clean up extra whitespace and newlines
+            prompt_text = prompt_text.strip()
+            
+            prompts_only.append(prompt_text)
         
         # Save to JSON file
-        print(f"\nSaving {len(prompts_only)} modified prompt conversations to {output_file}...")
+        print(f"\nSaving {len(prompts_only)} modified prompt strings to {output_file}...")
         
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(prompts_only, f, indent=2, ensure_ascii=False)
         
-        print(f"Successfully saved prompt conversations to {output_file}")
+        print(f"Successfully saved prompt strings to {output_file}")
         print(f"Output file size: {os.path.getsize(output_file) / (1024*1024):.2f} MB")
+        
+        # Show a sample of the converted format
+        if prompts_only:
+            print(f"\n{'='*80}")
+            print("SAMPLE CONVERTED PROMPT (first 500 characters):")
+            print('='*80)
+            sample_prompt = prompts_only[0]
+            print(sample_prompt[:500] + "..." if len(sample_prompt) > 500 else sample_prompt)
+            print('='*80)
         
     except Exception as e:
         print(f"Error processing dataset: {e}")
@@ -98,4 +116,4 @@ if __name__ == "__main__":
     extract_prompts_only("prompts_only.json")
     
     print("\nExtraction completed! Generated file:")
-    print("prompts_only.json - Contains modified prompt conversations with new ranking instructions") 
+    print("prompts_only.json - Contains modified prompt strings (pure text format) with new ranking instructions") 
